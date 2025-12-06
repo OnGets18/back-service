@@ -22,4 +22,8 @@ async function bootstrap() {
   logger.log(`🚀 Application is running on: http://localhost:${port}`);
   logger.log(`📚 Swagger documentation: http://localhost:${port}/api`);
 }
-bootstrap();
+bootstrap().catch((error) => {
+  const logger = new Logger('Bootstrap');
+  logger.error('Error starting the application', error);
+  process.exit(1);
+});
