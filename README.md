@@ -57,6 +57,44 @@ $ npm run test:e2e
 $ npm run test:cov
 ```
 
+## CI/CD
+
+This project includes a GitHub Actions workflow for continuous integration and deployment.
+
+### Setup
+
+1. **Add Docker Hub Token to GitHub Secrets:**
+   - Go to your repository: https://github.com/OnGets18/back-service
+   - Navigate to **Settings** → **Secrets and variables** → **Actions**
+   - Click **New repository secret**
+   - Name: `DOCKER_HUB_TOKEN`
+   - Value: Your Docker Hub access token (e.g., `dckr_pat_xxxxxxxxxxxxx`)
+   - Click **Add secret**
+
+### Workflow
+
+The CI/CD pipeline automatically:
+- Runs tests and linting on every push and pull request
+- Builds and pushes Docker images to Docker Hub on pushes to `main`/`master` branch
+- Tags images with: `latest`, branch name, commit SHA, and semantic version (if applicable)
+
+**Docker Hub Image:** `ongets18/back-service`
+
+### Manual Docker Build
+
+To build and push manually:
+
+```bash
+# Login to Docker Hub
+echo "YOUR_TOKEN" | docker login -u ongets18 --password-stdin
+
+# Build the image
+docker build -t ongets18/back-service:latest .
+
+# Push the image
+docker push ongets18/back-service:latest
+```
+
 ## Deployment
 
 When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
