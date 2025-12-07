@@ -71,14 +71,34 @@ This project includes a GitHub Actions workflow for continuous integration and d
    - Value: Your Docker Hub access token (e.g., `dckr_pat_xxxxxxxxxxxxx`)
    - Click **Add secret**
 
+2. **Add EC2 Deployment Secrets (for automatic deployment):**
+   - **ec2_ssh_key**: Your EC2 private SSH key (the entire key content, including `-----BEGIN OPENSSH PRIVATE KEY-----` and `-----END OPENSSH PRIVATE KEY-----`)
+   - **ec2_host**: Your EC2 instance IP address (e.g., `98.84.25.68`)
+   - **ec2_user**: Your EC2 username (usually `ec2-user` or `ubuntu`)
+   
+   To get your SSH key:
+   ```bash
+   cat ~/.ssh/your-ec2-key.pem
+   # Copy the entire output including BEGIN and END lines
+   ```
+
 ### Workflow
 
 The CI/CD pipeline automatically:
 - Runs tests and linting on every push and pull request
 - Builds and pushes Docker images to Docker Hub on pushes to `main`/`master` branch
+- **Automatically deploys to EC2** after successful build (only on `main`/`master` branch)
 - Tags images with: `latest`, branch name, commit SHA, and semantic version (if applicable)
 
 **Docker Hub Image:** `ongets18/back-service`
+
+**Deployment:** After merging to `main`/`master`, the pipeline will:
+1. Build and push the Docker image
+2. SSH into your EC2 instance
+3. Pull the latest image
+4. Stop the old container
+5. Start a new container with the latest version
+6. Verify the deployment
 
 ### Manual Docker Build
 
