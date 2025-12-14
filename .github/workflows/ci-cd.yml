@@ -161,11 +161,19 @@ jobs:
             }
             
             echo "🛑 Stopping existing container..."
+            # Force stop and remove container by name
             docker stop "$CONTAINER_NAME" 2>/dev/null || true
             docker rm -f "$CONTAINER_NAME" 2>/dev/null || true
-            # Also stop any containers using the same port
-            docker ps -q --filter "publish=3000" | xargs -r docker stop 2>/dev/null || true
-            docker ps -aq --filter "publish=3000" | xargs -r docker rm -f 2>/dev/null || true
+            # Also stop any containers using port 3000
+            docker ps --format "{{.ID}}" --filter "publish=3000" | while read id; do
+              if [ ! -z "$id" ]; then
+                echo "Stopping container $id using port 3000..."
+                docker stop "$id" 2>/dev/null || true
+                docker rm -f "$id" 2>/dev/null || true
+              fi
+            done
+            # Wait a moment for ports to be released
+            sleep 2
             
             echo "✨ Starting new container..."
             docker run -d \
