@@ -155,12 +155,16 @@ jobs:
             }
             
             echo "📥 Pulling latest image (forcing fresh pull)..."
-            docker pull "$IMAGE_NAME" --quiet || {
+            # Remove local image to force fresh pull from registry
+            docker rmi "$IMAGE_NAME" 2>/dev/null || true
+            # Pull latest image from registry (no cache)
+            docker pull "$IMAGE_NAME" || {
               echo "❌ Failed to pull image"
               exit 1
             }
             echo "✅ Image pulled successfully"
             # Verify we have the latest image
+            echo "📋 Image details:"
             docker images "$IMAGE_NAME" --format "{{.ID}} {{.CreatedAt}}"
             
             echo "🛑 Stopping existing container..."

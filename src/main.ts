@@ -10,7 +10,7 @@ async function bootstrap() {
   const config = new DocumentBuilder()
     .setTitle('Back Service API')
     .setDescription('API documentation for Back Service')
-    .setVersion('1.4')
+    .setVersion('1.5')
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
