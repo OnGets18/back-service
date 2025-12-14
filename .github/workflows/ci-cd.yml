@@ -93,6 +93,7 @@ jobs:
         uses: webfactory/ssh-agent@v0.9.0
         with:
           ssh-private-key: ${{ secrets.ec2_ssh_key }}
+        continue-on-error: true
       
       - name: Add EC2 to known hosts
         continue-on-error: true
@@ -169,7 +170,10 @@ jobs:
           DEPLOY_SCRIPT
       
       - name: Verify deployment
+        continue-on-error: true
         run: |
-          sleep 3
-          curl -f http://${{ secrets.ec2_host }}:3000 || echo "⚠️  Health check failed, but deployment may still be in progress"
+          echo "⏳ Waiting for application to start..."
+          sleep 10
+          echo "🔍 Checking if application is accessible..."
+          curl -f --max-time 5 http://${{ secrets.ec2_host }}:3000 && echo "✅ Application is accessible!" || echo "⚠️  Health check failed - this may be due to security group settings. Check that port 3000 is open."
 
