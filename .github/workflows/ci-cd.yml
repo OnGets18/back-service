@@ -154,11 +154,14 @@ jobs:
               exit 1
             }
             
-            echo "📥 Pulling latest image..."
-            docker pull "$IMAGE_NAME" || {
+            echo "📥 Pulling latest image (forcing fresh pull)..."
+            docker pull "$IMAGE_NAME" --quiet || {
               echo "❌ Failed to pull image"
               exit 1
             }
+            echo "✅ Image pulled successfully"
+            # Verify we have the latest image
+            docker images "$IMAGE_NAME" --format "{{.ID}} {{.CreatedAt}}"
             
             echo "🛑 Stopping existing container..."
             # Force stop and remove container by name
@@ -174,6 +177,9 @@ jobs:
             done
             # Wait a moment for ports to be released
             sleep 2
+            # Remove old image to ensure we use the latest
+            echo "🧹 Cleaning up old images..."
+            docker image prune -f > /dev/null 2>&1 || true
             
             echo "✨ Starting new container..."
             docker run -d \
