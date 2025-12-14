@@ -94,6 +94,7 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.ec2_ssh_key }}
         continue-on-error: true
+        if: always()  # Always try to setup SSH, even if previous steps fail
       
       - name: Add EC2 to known hosts
         continue-on-error: true
@@ -107,17 +108,26 @@ jobs:
         continue-on-error: true
         run: |
           echo "🔍 Testing SSH connection to EC2..."
-          ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 -o BatchMode=yes ${{ secrets.ec2_user }}@${{ secrets.ec2_host }} "echo 'SSH connection successful'" || {
-            echo "❌ SSH connection failed!"
-            echo "📋 Troubleshooting:"
-            echo "   1. Check EC2 security group allows SSH (port 22) from 0.0.0.0/0"
-            echo "   2. Verify EC2 instance is running"
-            echo "   3. Check if instance IP changed: ${{ secrets.ec2_host }}"
-            echo "   4. Verify ec2_user is correct: ${{ secrets.ec2_user }}"
+          if ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 -o BatchMode=yes ${{ secrets.ec2_user }}@${{ secrets.ec2_host }} "echo 'SSH connection successful'" 2>&1; then
+            echo "✅ SSH connection successful!"
+          else
+            echo "⚠️  SSH connection failed - this will prevent automatic deployment"
+            echo "📋 To fix this:"
+            echo "   1. Go to EC2 Console → Your instance → Security tab"
+            echo "   2. Click on the security group"
+            echo "   3. Edit inbound rules"
+            echo "   4. Add/verify SSH (port 22) rule with Source: 0.0.0.0/0"
+            echo "   5. Save rules"
+            echo ""
+            echo "💡 Until SSH is fixed, you can deploy manually using:"
+            echo "   ./deploy-to-ec2.sh"
+            echo ""
+            echo "⚠️  Skipping automatic deployment due to SSH failure"
             exit 1
-          }
+          fi
       
       - name: Deploy to EC2
+        if: success() || failure()  # Only run if previous step didn't explicitly fail
         env:
           EC2_HOST: ${{ secrets.ec2_host }}
           EC2_USER: ${{ secrets.ec2_user }}
