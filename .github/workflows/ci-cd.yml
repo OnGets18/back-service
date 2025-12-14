@@ -78,6 +78,7 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=registry,ref=${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:buildcache
           cache-to: type=registry,ref=${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:buildcache,mode=max
+          no-cache: false  # Allow cache for faster builds, but code changes will trigger rebuild
 
   deploy:
     name: Deploy to EC2
@@ -265,6 +266,17 @@ jobs:
             echo ""
             echo "📋 Container logs (last 10 lines):"
             docker logs --tail 10 "$CONTAINER_NAME"
+            
+            # Verify the deployed version
+            echo ""
+            echo "🔍 Verifying deployed version..."
+            sleep 3
+            DEPLOYED_VERSION=$(curl -s "http://localhost:$PORT/api-json" 2>/dev/null | grep -o '"version":"[^"]*"' | cut -d'"' -f4 || echo "unknown")
+            echo "📌 Deployed version: $DEPLOYED_VERSION"
+            
+            if [ "$DEPLOYED_VERSION" = "unknown" ]; then
+              echo "⚠️  Could not verify version from API (app might still be starting)"
+            fi
             
             echo ""
             echo "✅ Deployment successful!"
