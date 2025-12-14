@@ -108,7 +108,7 @@ jobs:
           EC2_USER: ${{ secrets.ec2_user }}
           DOCKER_HUB_TOKEN: ${{ secrets.DOCKER_HUB_TOKEN }}
           DOCKER_USERNAME: ${{ env.DOCKER_USERNAME }}
-          IMAGE_NAME: ${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:latest
+          IMAGE_NAME: ${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:master
           CONTAINER_NAME: back-service
           PORT: 3000
         run: |
