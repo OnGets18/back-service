@@ -155,14 +155,32 @@ jobs:
             }
             
             echo "📥 Pulling latest image (forcing fresh pull)..."
+            # Wait a moment to ensure image is available in registry after build
+            echo "⏳ Waiting for image to be available in registry..."
+            sleep 5
+            
             # Remove local image to force fresh pull from registry
             docker rmi "$IMAGE_NAME" 2>/dev/null || true
-            # Pull latest image from registry (no cache)
-            docker pull "$IMAGE_NAME" || {
-              echo "❌ Failed to pull image"
-              exit 1
-            }
-            echo "✅ Image pulled successfully"
+            
+            # Retry pulling image (sometimes registry needs a moment)
+            MAX_RETRIES=3
+            RETRY_COUNT=0
+            while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+              if docker pull "$IMAGE_NAME"; then
+                echo "✅ Image pulled successfully"
+                break
+              else
+                RETRY_COUNT=$((RETRY_COUNT + 1))
+                if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
+                  echo "⚠️  Pull failed, retrying in 5 seconds... (attempt $RETRY_COUNT/$MAX_RETRIES)"
+                  sleep 5
+                else
+                  echo "❌ Failed to pull image after $MAX_RETRIES attempts"
+                  exit 1
+                fi
+              fi
+            done
+            
             # Verify we have the latest image
             echo "📋 Image details:"
             docker images "$IMAGE_NAME" --format "{{.ID}} {{.CreatedAt}}"
