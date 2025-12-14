@@ -6,8 +6,8 @@
 set -e  # Exit on error
 
 # Configuration
-EC2_IP=${1:-"98.84.25.68"}
-EC2_USER=${2:-"ec2-user"}
+EC2_IP=${1:-"44.200.42.211"}
+EC2_USER=${2:-"ubuntu"}
 SSH_KEY=${3:-""}
 IMAGE_NAME="ongets18/back-service:latest"
 CONTAINER_NAME="back-service"
@@ -62,11 +62,11 @@ echo ""
 # Deploy
 echo -e "${BLUE}📦 Deploying application...${NC}"
 
-$SSH_CMD $EC2_USER@$EC2_IP << EOF
+$SSH_CMD $EC2_USER@$EC2_IP DOCKER_HUB_TOKEN="$DOCKER_HUB_TOKEN" bash -s << 'DEPLOY_SCRIPT'
   set -e
   
   echo "🔐 Logging into Docker Hub..."
-  echo "$DOCKER_HUB_TOKEN" | docker login -u ongets18 --password-stdin > /dev/null 2>&1 || {
+  echo "\$DOCKER_HUB_TOKEN" | docker login -u ongets18 --password-stdin > /dev/null 2>&1 || {
     echo "❌ Docker Hub login failed"
     exit 1
   }
@@ -105,7 +105,7 @@ $SSH_CMD $EC2_USER@$EC2_IP << EOF
   echo ""
   echo "📋 Container logs (last 10 lines):"
   docker logs --tail 10 $CONTAINER_NAME
-EOF
+DEPLOY_SCRIPT
 
 if [ $? -eq 0 ]; then
   echo ""

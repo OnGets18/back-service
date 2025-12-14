@@ -35,10 +35,10 @@ After deployment, check the version:
 
 ```bash
 # From your local machine
-curl http://98.84.25.68:3000
+curl http://44.200.42.211:3000
 
 # Check Swagger docs (should show version 1.1)
-curl http://98.84.25.68:3000/api
+curl http://44.200.42.211:3000/api
 ```
 
 ## One-Line Deploy

@@ -73,7 +73,7 @@ This project includes a GitHub Actions workflow for continuous integration and d
 
 2. **Add EC2 Deployment Secrets (for automatic deployment):**
    - **ec2_ssh_key**: Your EC2 private SSH key (the entire key content, including `-----BEGIN OPENSSH PRIVATE KEY-----` and `-----END OPENSSH PRIVATE KEY-----`)
-   - **ec2_host**: Your EC2 instance IP address (e.g., `98.84.25.68`)
+   - **ec2_host**: Your EC2 instance IP address: `44.200.42.211`
    - **ec2_user**: Your EC2 username (usually `ec2-user` or `ubuntu`)
    
    To get your SSH key:
