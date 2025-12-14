@@ -203,7 +203,11 @@ jobs:
             echo "🧹 Cleaning up old images..."
             docker image prune -f > /dev/null 2>&1 || true
             
-            echo "✨ Starting new container..."
+            echo "✨ Starting new container with latest image..."
+            # Get the image ID we just pulled to ensure we use it
+            LATEST_IMAGE_ID=$(docker images "$IMAGE_NAME" --format "{{.ID}}" | head -1)
+            echo "📦 Using image ID: $LATEST_IMAGE_ID"
+            
             docker run -d \
               --name "$CONTAINER_NAME" \
               --restart unless-stopped \
@@ -214,7 +218,7 @@ jobs:
             }
             
             echo "⏳ Waiting for container to start..."
-            sleep 5
+            sleep 8
             
             echo "📊 Container status:"
             docker ps | grep "$CONTAINER_NAME" || {
@@ -223,6 +227,26 @@ jobs:
               docker logs --tail 20 "$CONTAINER_NAME" 2>&1 || true
               exit 1
             }
+            
+            # Verify the container is using the latest image
+            CONTAINER_IMAGE_ID=$(docker inspect "$CONTAINER_NAME" --format "{{.Image}}" | cut -d: -f2)
+            echo "🔍 Verifying container is using latest image..."
+            echo "   Container image ID: $CONTAINER_IMAGE_ID"
+            echo "   Latest image ID: $LATEST_IMAGE_ID"
+            
+            if [ "$CONTAINER_IMAGE_ID" != "$LATEST_IMAGE_ID" ]; then
+              echo "⚠️  WARNING: Container is not using the latest image!"
+              echo "   Forcing restart with latest image..."
+              docker stop "$CONTAINER_NAME" 2>/dev/null || true
+              docker rm -f "$CONTAINER_NAME" 2>/dev/null || true
+              sleep 2
+              docker run -d \
+                --name "$CONTAINER_NAME" \
+                --restart unless-stopped \
+                -p "$PORT:3000" \
+                "$IMAGE_NAME"
+              sleep 5
+            fi
             
             echo ""
             echo "📋 Container logs (last 10 lines):"
