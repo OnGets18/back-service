@@ -108,7 +108,7 @@ jobs:
         continue-on-error: true
         run: |
           echo "🔍 Testing SSH connection to EC2..."
-          if ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 -o BatchMode=yes ${{ secrets.ec2_user }}@${{ secrets.ec2_host }} "echo 'SSH connection successful'" 2>&1; then
+          if ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 -o BatchMode=yes ${{ secrets.ec2_user }}@${{ secrets.ec2_host }} 'echo "SSH connection successful"' 2>&1; then
             echo "✅ SSH connection successful!"
           else
             echo "⚠️  SSH connection failed - this will prevent automatic deployment"
@@ -162,7 +162,10 @@ jobs:
             
             echo "🛑 Stopping existing container..."
             docker stop "$CONTAINER_NAME" 2>/dev/null || true
-            docker rm "$CONTAINER_NAME" 2>/dev/null || true
+            docker rm -f "$CONTAINER_NAME" 2>/dev/null || true
+            # Also stop any containers using the same port
+            docker ps -q --filter "publish=3000" | xargs -r docker stop 2>/dev/null || true
+            docker ps -aq --filter "publish=3000" | xargs -r docker rm -f 2>/dev/null || true
             
             echo "✨ Starting new container..."
             docker run -d \
