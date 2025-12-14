@@ -155,9 +155,9 @@ jobs:
             }
             
             echo "📥 Pulling latest image (forcing fresh pull)..."
-            # Wait a moment to ensure image is available in registry after build
-            echo "⏳ Waiting for image to be available in registry..."
-            sleep 5
+            # Wait longer to ensure image is fully available in registry after build
+            echo "⏳ Waiting for image to be available in registry (this can take up to 30 seconds)..."
+            sleep 15
             
             # Remove local image to force fresh pull from registry
             docker rmi "$IMAGE_NAME" 2>/dev/null || true
@@ -183,7 +183,11 @@ jobs:
             
             # Verify we have the latest image
             echo "📋 Image details:"
-            docker images "$IMAGE_NAME" --format "{{.ID}} {{.CreatedAt}}"
+            docker images "$IMAGE_NAME" --format "{{.ID}} {{.CreatedAt}} {{.Repository}}:{{.Tag}}"
+            
+            # Get the image digest to verify it's the latest
+            IMAGE_DIGEST=$(docker inspect "$IMAGE_NAME" --format "{{.RepoDigests}}" 2>/dev/null || echo "unknown")
+            echo "🔍 Image digest: $IMAGE_DIGEST"
             
             echo "🛑 Stopping existing container..."
             # Force stop and remove ALL containers with this name (in case of duplicates)
