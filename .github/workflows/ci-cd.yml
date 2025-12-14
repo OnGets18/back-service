@@ -270,12 +270,15 @@ jobs:
             # Verify the deployed version
             echo ""
             echo "🔍 Verifying deployed version..."
-            sleep 3
-            DEPLOYED_VERSION=$(curl -s "http://localhost:$PORT/api-json" 2>/dev/null | grep -o '"version":"[^"]*"' | cut -d'"' -f4 || echo "unknown")
+            sleep 5
+            DEPLOYED_VERSION=$(curl -s "http://$EC2_HOST:$PORT/api-json" 2>/dev/null | grep -o '"version":"[^"]*"' | cut -d'"' -f4 || echo "unknown")
             echo "📌 Deployed version: $DEPLOYED_VERSION"
             
             if [ "$DEPLOYED_VERSION" = "unknown" ]; then
               echo "⚠️  Could not verify version from API (app might still be starting)"
+              echo "   This is OK - the app may need a few more seconds to fully start"
+            else
+              echo "✅ Version verified: $DEPLOYED_VERSION"
             fi
             
             echo ""
