@@ -103,6 +103,20 @@ jobs:
           ssh-keyscan -H ${{ secrets.ec2_host }} >> ~/.ssh/known_hosts 2>&1 || echo "Note: Could not add host key (this is OK, StrictHostKeyChecking=no will be used)"
           chmod 600 ~/.ssh/known_hosts 2>/dev/null || true
       
+      - name: Test SSH connection
+        continue-on-error: true
+        run: |
+          echo "🔍 Testing SSH connection to EC2..."
+          ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 -o BatchMode=yes ${{ secrets.ec2_user }}@${{ secrets.ec2_host }} "echo 'SSH connection successful'" || {
+            echo "❌ SSH connection failed!"
+            echo "📋 Troubleshooting:"
+            echo "   1. Check EC2 security group allows SSH (port 22) from 0.0.0.0/0"
+            echo "   2. Verify EC2 instance is running"
+            echo "   3. Check if instance IP changed: ${{ secrets.ec2_host }}"
+            echo "   4. Verify ec2_user is correct: ${{ secrets.ec2_user }}"
+            exit 1
+          }
+      
       - name: Deploy to EC2
         env:
           EC2_HOST: ${{ secrets.ec2_host }}
@@ -113,7 +127,8 @@ jobs:
           CONTAINER_NAME: back-service
           PORT: 3000
         run: |
-          ssh -o StrictHostKeyChecking=no ${{ secrets.ec2_user }}@${{ secrets.ec2_host }} \
+          echo "🚀 Starting deployment..."
+          ssh -o StrictHostKeyChecking=no -o ConnectTimeout=30 ${{ secrets.ec2_user }}@${{ secrets.ec2_host }} \
             DOCKER_HUB_TOKEN="$DOCKER_HUB_TOKEN" \
             DOCKER_USERNAME="$DOCKER_USERNAME" \
             IMAGE_NAME="$IMAGE_NAME" \
