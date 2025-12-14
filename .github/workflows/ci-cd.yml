@@ -190,7 +190,17 @@ jobs:
             IMAGE_DIGEST=$(docker inspect "$IMAGE_NAME" --format "{{.RepoDigests}}" 2>/dev/null || echo "unknown")
             echo "🔍 Image digest: $IMAGE_DIGEST"
             
+            # Get the image ID we just pulled BEFORE stopping containers
+            LATEST_IMAGE_ID=$(docker images "$IMAGE_NAME" --format "{{.ID}}" | head -1)
+            LATEST_IMAGE_CREATED=$(docker images "$IMAGE_NAME" --format "{{.CreatedAt}}" | head -1)
+            echo "📦 Latest image details:"
+            echo "   Image ID: $LATEST_IMAGE_ID"
+            echo "   Created: $LATEST_IMAGE_CREATED"
+            
             echo "🛑 Stopping existing container..."
+            # First, stop the container (this prevents auto-restart)
+            docker stop "$CONTAINER_NAME" 2>/dev/null || true
+            
             # Force stop and remove ALL containers with this name (in case of duplicates)
             docker ps -a --filter "name=$CONTAINER_NAME" --format "{{.ID}}" | while read id; do
               if [ ! -z "$id" ]; then
@@ -209,24 +219,35 @@ jobs:
               fi
             done
             
-            # Wait a moment for ports to be released
-            sleep 3
+            # Wait for ports to be fully released and containers to stop
+            echo "⏳ Waiting for containers to fully stop..."
+            sleep 5
             
-            # Get the image ID we just pulled to ensure we use it
-            LATEST_IMAGE_ID=$(docker images "$IMAGE_NAME" --format "{{.ID}}" | head -1)
-            LATEST_IMAGE_CREATED=$(docker images "$IMAGE_NAME" --format "{{.CreatedAt}}" | head -1)
-            echo "📦 Latest image details:"
-            echo "   Image ID: $LATEST_IMAGE_ID"
-            echo "   Created: $LATEST_IMAGE_CREATED"
+            # Verify no containers are using the port
+            PORT_IN_USE=$(docker ps --format "{{.ID}}" --filter "publish=3000" | wc -l)
+            if [ "$PORT_IN_USE" -gt 0 ]; then
+              echo "⚠️  Warning: Port $PORT is still in use, forcing cleanup..."
+              docker ps --format "{{.ID}}" --filter "publish=3000" | xargs -r docker kill 2>/dev/null || true
+              sleep 2
+            fi
             
-            echo "✨ Starting new container with latest image..."
+            echo "✨ Starting new container with latest image (ID: $LATEST_IMAGE_ID)..."
+            # Use the specific image ID to ensure we use the exact image we just pulled
             docker run -d \
               --name "$CONTAINER_NAME" \
               --restart unless-stopped \
               -p "$PORT:3000" \
-              "$IMAGE_NAME" || {
-              echo "❌ Failed to start container"
-              exit 1
+              "$LATEST_IMAGE_ID" || {
+              echo "❌ Failed to start container with image ID, trying with image name..."
+              # Fallback to image name if ID fails
+              docker run -d \
+                --name "$CONTAINER_NAME" \
+                --restart unless-stopped \
+                -p "$PORT:3000" \
+                "$IMAGE_NAME" || {
+                echo "❌ Failed to start container"
+                exit 1
+              }
             }
             
             echo "⏳ Waiting for container to start..."
@@ -241,24 +262,35 @@ jobs:
             }
             
             # Verify the container is using the latest image
-            CONTAINER_IMAGE_ID=$(docker inspect "$CONTAINER_NAME" --format "{{.Image}}" | cut -d: -f2 | cut -c1-12)
+            CONTAINER_IMAGE_ID=$(docker inspect "$CONTAINER_NAME" --format "{{.Image}}" | cut -d: -f2)
+            CONTAINER_IMAGE_ID_SHORT=$(echo "$CONTAINER_IMAGE_ID" | cut -c1-12)
             LATEST_IMAGE_ID_SHORT=$(echo "$LATEST_IMAGE_ID" | cut -c1-12)
             echo "🔍 Verifying container is using latest image..."
-            echo "   Container image: $CONTAINER_IMAGE_ID"
-            echo "   Latest image: $LATEST_IMAGE_ID_SHORT"
+            echo "   Container image ID: $CONTAINER_IMAGE_ID_SHORT"
+            echo "   Latest image ID: $LATEST_IMAGE_ID_SHORT"
             
-            if [ "$CONTAINER_IMAGE_ID" != "$LATEST_IMAGE_ID_SHORT" ]; then
+            if [ "$CONTAINER_IMAGE_ID_SHORT" != "$LATEST_IMAGE_ID_SHORT" ]; then
               echo "⚠️  WARNING: Container is not using the latest image!"
+              echo "   Container is using: $CONTAINER_IMAGE_ID_SHORT"
+              echo "   Latest image is: $LATEST_IMAGE_ID_SHORT"
               echo "   Forcing restart with latest image..."
               docker stop "$CONTAINER_NAME" 2>/dev/null || true
               docker rm -f "$CONTAINER_NAME" 2>/dev/null || true
-              sleep 3
+              sleep 5
               docker run -d \
                 --name "$CONTAINER_NAME" \
                 --restart unless-stopped \
                 -p "$PORT:3000" \
-                "$IMAGE_NAME"
+                "$LATEST_IMAGE_ID"
               sleep 8
+              # Verify again
+              NEW_CONTAINER_IMAGE_ID=$(docker inspect "$CONTAINER_NAME" --format "{{.Image}}" | cut -d: -f2 | cut -c1-12)
+              if [ "$NEW_CONTAINER_IMAGE_ID" = "$LATEST_IMAGE_ID_SHORT" ]; then
+                echo "✅ Container now using the latest image!"
+              else
+                echo "❌ ERROR: Container still not using latest image after restart"
+                exit 1
+              fi
             else
               echo "✅ Container is using the latest image!"
             fi
